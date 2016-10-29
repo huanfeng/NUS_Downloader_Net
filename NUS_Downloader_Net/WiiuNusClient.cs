@@ -95,8 +95,6 @@ namespace libWiiSharp
         private WebClient mWcNus;
         private bool mUseLocalFiles = false;
         private bool mContinueWithoutTicket = true;
-        private ManualResetEvent mAsyncLock = new ManualResetEvent(false);
-
 
         private string mTitleId;
         private string mTitleVersion;
@@ -174,77 +172,94 @@ namespace libWiiSharp
             return fi.Length;
         }
 
-        public static string ConvertUnit(long size)
+        public static string ConvertUnit(long size, string separateUnit = " ")
         {
             string FileSize = string.Empty;
             if (size > (1024 * 1024 * 1024))
-                FileSize = string.Format("{0} GB", ((double)size / (1024 * 1024 * 1024)).ToString(".##"));
+                FileSize = string.Format("{0}" + separateUnit + "GB", ((double)size / (1024 * 1024 * 1024)).ToString(".##"));
             else if (size > (1024 * 1024))
-                FileSize = string.Format("{0} MB", ((double)size / (1024 * 1024)).ToString(".##"));
+                FileSize = string.Format("{0}" + separateUnit + "MB", ((double)size / (1024 * 1024)).ToString(".##"));
             else if (size > 1024)
-                FileSize = string.Format("{0} KB", ((double)size / 1024).ToString(".##"));
+                FileSize = string.Format("{0}" + separateUnit + "KB", ((double)size / 1024).ToString(".##"));
             else if (size == 0)
                 FileSize = "0 Byte";
             else
-                FileSize = string.Format("{0} Byte", ((double)size / 1).ToString(".##"));
+                FileSize = string.Format("{0}" + separateUnit + "B", ((double)size / 1).ToString(".##"));
 
             return FileSize;
         }
 
-        private void downloadFileAsyncAndWait(string url, string filePath)
+        public string getTmdUrl()
         {
-            isDownloading = true;
-            mWcNus.DownloadFileAsync(new Uri(url), filePath);
-            //mAsyncLock.WaitOne();
+            string tmdFile = "tmd" + (string.IsNullOrEmpty(mTitleVersion) ? string.Empty : string.Format(".{0}", mTitleVersion));
+            return string.Format("{0}{1}/{2}", mNusUrl, mTitleId, tmdFile);
+        }
 
-            while (isDownloading)
-            {
-                if (cancelDownload)
-                {
-                    mWcNus.CancelAsync();
-                    // TODO: report progress
-                    while (isDownloading) { }
-                    File.Delete(filePath);
-                    throw new OperationCanceledException("Download operation has been canceled.");
-                }
-            }
+        public string getTicketUrl()
+        {
+            return string.Format("{0}{1}/{2}", mNusUrl, mTitleId, "cetk");
+        }
+
+        public string getContentUrl(string contentId)
+        {
+            return string.Format("{0}{1}/{2}", mNusUrl, mTitleId, contentId);
         }
 
         const int BUFF_SIZE = 512 * 1024;
+
         private void downloadFileAndWait(string url, string filePath)
         {
-            Stream rs = mWcNus.OpenRead(url);
-
-            FileStream os = new FileStream(filePath, FileMode.Create);
-
-            byte[] buff = new byte[BUFF_SIZE];
-            long bytesTotal = Convert.ToInt64(mWcNus.ResponseHeaders["Content-Length"]);
-            long bytesReaded = 0;
-            long remain = bytesTotal;
-            while (true)
+            Stream webStream = null;
+            FileStream fileStream = null;
+            try
             {
-                if (!cancelDownload)
+                webStream = mWcNus.OpenRead(url);
+
+                fileStream = new FileStream(filePath, FileMode.Create);
+
+                byte[] buff = new byte[BUFF_SIZE];
+                long bytesTotal = Convert.ToInt64(mWcNus.ResponseHeaders["Content-Length"]);
+                long bytesReaded = 0;
+                long remain = bytesTotal;
+                while (true)
                 {
-                    int read = rs.Read(buff, 0, buff.Length);
-                    if (read > 0)
+                    if (!cancelDownload)
                     {
-                        bytesReaded += read;
-                        os.Write(buff, 0, read);
-                        fireCurrProgress(bytesReaded, bytesTotal);
+                        int read = webStream.Read(buff, 0, buff.Length);
+                        if (read > 0)
+                        {
+                            bytesReaded += read;
+                            fileStream.Write(buff, 0, read);
+                            fireCurrProgress(bytesReaded, bytesTotal);
+                        }
+                        else
+                        {
+                            // Download over
+                            break;
+                        }
                     }
                     else
                     {
+                        // Download canceled
                         break;
                     }
                 }
-                else
+
+            
+            } finally
+            {
+                if (fileStream != null)
                 {
-                    break;
+                    fileStream.Close();
+                    fileStream = null;
+                }
+                if (webStream != null)
+                {
+                    webStream.Close();
+                    webStream.Dispose();
+                    webStream = null;
                 }
             }
-
-            rs.Close();
-            os.Close();
 
             if (cancelDownload)
             {
@@ -259,7 +274,7 @@ namespace libWiiSharp
 
             if (!CheckInet()) { fireDebug("   Connection not found..."); throw new Exception("You're not connected to the internet!"); }
 
-            string url = string.Format("{0}{1}/{2}", mNusUrl, mTitleId, contentId);
+            string url = getContentUrl(contentId);
             string filePath = Path.Combine(mOutputDir, contentId + ".app");
 
             FileInfo fi = new FileInfo(filePath);
@@ -289,6 +304,23 @@ namespace libWiiSharp
             }
 
             //fireDebug("Downloading Content {0} Finished...", contentId);
+        }
+
+        private string[] getContentDownloadUrls(TMD_Content content)
+        {
+            string contentId = content.ContentID.ToString("x8");
+
+            string url = getContentUrl(contentId);
+
+            if (((ushort)content.Type & 0x02) == 0x02) // Need download h3
+            {
+                string h3url = getContentUrl(contentId + ".h3");
+                string h3Path = Path.Combine(mOutputDir, contentId + ".h3");
+
+                return new string[] { url, h3url };
+
+            }
+            return new string[] { url };
         }
 
         private byte[] downloadSingleContentAndDecrypt(string titleId, string titleVersion, string contentId, string outputFile)
@@ -354,7 +386,7 @@ namespace libWiiSharp
         {
             if (!CheckInet()) throw new Exception("You're not connected to the internet!");
 
-            string url = string.Format("{0}{1}/{2}", mNusUrl, mTitleId, "cetk");
+            string url = getTicketUrl();
             string filePath = Path.Combine(mOutputDir, TIK_FILE_NAME);
 
             FileInfo fi = new FileInfo(filePath);
@@ -377,8 +409,7 @@ namespace libWiiSharp
         {
             if (!CheckInet()) throw new Exception("You're not connected to the internet!");
 
-            string tmdFile = "tmd" + (string.IsNullOrEmpty(mTitleVersion) ? string.Empty : string.Format(".{0}", mTitleVersion));
-            string titleUrl = string.Format("{0}{1}/{2}", mNusUrl, mTitleId, tmdFile);
+            string titleUrl = getTmdUrl();
             string filePath = Path.Combine(mOutputDir, TMD_FILE_NAME);
 
 
@@ -394,6 +425,19 @@ namespace libWiiSharp
             }
 
             mTmd = TMD.Load(filePath);
+
+            return mTmd;
+        }
+
+        private TMD downloadTmdToMemory()
+        {
+            if (!CheckInet()) throw new Exception("You're not connected to the internet!");
+
+            string titleUrl = getTmdUrl();
+
+            byte[] data = mWcNus.DownloadData(titleUrl);
+
+            mTmd = TMD.Load(data);
 
             return mTmd;
         }
@@ -551,6 +595,50 @@ namespace libWiiSharp
                 return true;
             }
             catch { return false; }
+        }
+
+        public void exportTitle()
+        {
+            // Create dirs
+            if (!Directory.Exists(mOutputDirBase)) Directory.CreateDirectory(mOutputDirBase);
+
+            //Download TMD
+            fireDebug("  - TMD... ");
+
+            TMD tmd = downloadTmdToMemory();
+
+            //fireDebug(" {0} Contents.\r\n", tmd.NumOfContents);
+
+            mBytesTotal = 0;
+            for (int i = 0; i < tmd.NumOfContents; i++)
+            {
+                mBytesTotal += (long)tmd.Contents[i].Size;
+            }
+            fireDebug("  Contents:" + tmd.NumOfContents + ", Size:" + ConvertUnit(mBytesTotal) + "\r\n");
+
+            string[] encryptedContents = new string[tmd.NumOfContents];
+
+            mBytesTotalDone = 0;
+
+            var listFilePath = Path.Combine(mOutputDirBase, mTitleId + "_LIST_" + ConvertUnit(mBytesTotal, "") + ".txt");
+
+            StringWriter sw = new StringWriter();
+
+            sw.WriteLine(getTmdUrl());
+
+            //Export Content
+            for (int i = 0; i < tmd.NumOfContents; i++)
+            {
+                TMD_Content content = tmd.Contents[i];
+
+                var list = getContentDownloadUrls(content);
+                foreach (var j in list)
+                {
+                    sw.WriteLine(j);
+                }
+            }
+
+            File.WriteAllText(listFilePath, sw.ToString());
         }
 
         #region Events

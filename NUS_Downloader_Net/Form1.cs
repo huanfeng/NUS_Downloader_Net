@@ -18,19 +18,28 @@ namespace NUS_Downloader_Net
         bool mDownloading = false;
         BackgroundWorker mNusDownload = new BackgroundWorker();
 
-        libWiiSharp.WiiuNusClient nusClient;
+        libWiiSharp.WiiuNusClient mNusClient;
 
         System.Threading.Timer mTimer;
+
+        bool mExporting = false;
+        BackgroundWorker mNusExport = new BackgroundWorker();
 
         public Form1()
         {
             InitializeComponent();
             Control.CheckForIllegalCrossThreadCalls = false;
+
+            textBox_readme.Text = global::NUS_Downloader_Net.Properties.Resources.text_readme;
+
             progressBar_current.Maximum = 1000;
             progressBar_total.Maximum = 1000;
 
             mNusDownload.DoWork += MNusDownload_DoWork;
             mNusDownload.RunWorkerCompleted += MNusDownload_RunWorkerCompleted;
+
+            mNusExport.DoWork += MNusExport_DoWork;
+            mNusExport.RunWorkerCompleted += MNusExport_RunWorkerCompleted;
 
 #if DEBUG
             textBox_down_titles.Text = @"000500001f600a00
@@ -49,9 +58,9 @@ namespace NUS_Downloader_Net
             try
             {
                 mTimer = new System.Threading.Timer(MTimer_Tick, null, 0, 1000);
-                
 
-                nusClient = null;
+
+                mNusClient = null;
                 ShowLog("Start download list...");
                 List<string> successList = new List<string>();
                 List<string> todoList = parseTitleList();
@@ -62,7 +71,7 @@ namespace NUS_Downloader_Net
                     for (int i = 0; i < total; i++)
                     {
                         var title = todoList[i];
-                        if (nusClient == null || !nusClient.cancelDownload)
+                        if (mNusClient == null || !mNusClient.cancelDownload)
                         {
                             if (successList.Contains(title))
                             {
@@ -86,7 +95,7 @@ namespace NUS_Downloader_Net
                                     catch (Exception ex)
                                     {
                                         ShowLog("\r\nDownload fail: \"" + ex.Message + "\"");
-                                        if (!checkBox_auto_retry.Checked || nusClient.cancelDownload)
+                                        if (!checkBox_auto_retry.Checked || mNusClient.cancelDownload)
                                         {
                                             break;
                                         }
@@ -107,6 +116,15 @@ namespace NUS_Downloader_Net
             }
         }
 
+        private void MNusDownload_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
+        {
+            ShowLog("Download completed...");
+            mTimer.Dispose();
+            mLastDownSize = 0;
+            button_download.Enabled = true;
+            setDownloading(false);
+        }
+
         long mLastDownSize = 0;
         private void MTimer_Tick(object state)
         {
@@ -115,7 +133,8 @@ namespace NUS_Downloader_Net
             if (mLastDownSize == 0)
             {
                 mLastDownSize = mCurrDownSize;
-            } else
+            }
+            else
             {
                 long downSize = mCurrDownSize - mLastDownSize;
                 mLastDownSize = mCurrDownSize;
@@ -123,15 +142,6 @@ namespace NUS_Downloader_Net
                 string text = libWiiSharp.WiiuNusClient.ConvertUnit(speed);
                 label_downSpeed.Text = text + "/s";
             }
-        }
-
-        private void MNusDownload_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
-        {
-            ShowLog("Download completed...");
-            mTimer.Dispose();
-            mLastDownSize = 0;
-            button_download.Enabled = true;
-            setDownloading(false);
         }
 
         public class TimeoutWebClient : WebClient
@@ -156,27 +166,28 @@ namespace NUS_Downloader_Net
         {
             titleId = titleId.ToUpper();
 
+            mLastDownSize = 0;
             string outputDir = Path.Combine(Environment.CurrentDirectory, "NusData");
 
             WebClient nusWC = new TimeoutWebClient(60 * 1000);
 
             // Create\Configure NusClient
-            nusClient = new libWiiSharp.WiiuNusClient(titleId, version, outputDir);
-            nusClient.ConfigureNusClient(nusWC);
-            nusClient.UseLocalFiles = true;
+            mNusClient = new libWiiSharp.WiiuNusClient(titleId, version, outputDir);
+            mNusClient.ConfigureNusClient(nusWC);
+            mNusClient.UseLocalFiles = true;
 
-            nusClient.SetToWiiServer();
+            mNusClient.SetToWiiServer();
 
             // Events
-            nusClient.Debug += nusClient_Debug;
-            nusClient.CurrProgress += NusClient_CurrProgress;
-            nusClient.TotalProgress += NusClient_TotalProgress;
+            mNusClient.Debug += nusClient_Debug;
+            mNusClient.CurrProgress += NusClient_CurrProgress;
+            mNusClient.TotalProgress += NusClient_TotalProgress;
 
-            nusClient.cancelDownload = false;
+            mNusClient.cancelDownload = false;
 
             ShowLog("");
             ShowLog(string.Format("  Download [{0}/{1}] - TitleId:{2} Start...", curr + 1, total, titleId));
-            nusClient.downloadTitle();
+            mNusClient.downloadTitle();
             ShowLog(string.Format("  Download [{0}/{1}] - TitleId:{2} Finish...", curr + 1, total, titleId));
         }
 
@@ -227,6 +238,64 @@ namespace NUS_Downloader_Net
             return list;
         }
 
+        private void MNusExport_DoWork(object sender, DoWorkEventArgs e)
+        {
+            try
+            {
+                ShowLog("Start export list...");
+                List<string> successList = new List<string>();
+                List<string> todoList = parseTitleList();
+
+                int total = todoList.Count;
+                if (todoList != null && todoList.Count > 0)
+                {
+                    for (int i = 0; i < total; i++)
+                    {
+                        var title = todoList[i];
+                        ExportOneTitle(title, "", i, total);
+                    }
+                }
+                else
+                {
+                    ShowLog("Title list is empty!");
+                }
+            }
+            catch (Exception ex)
+            {
+                ShowLog("Download fail: \"" + ex.Message + "\"");
+            }
+        }
+
+        private void MNusExport_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
+        {
+            ShowLog("Export completed...");
+            setExporting(false);
+        }
+
+        private void ExportOneTitle(string titleId, string version, int curr, int total)
+        {
+            titleId = titleId.ToUpper();
+
+            string outputDir = Path.Combine(Environment.CurrentDirectory, "NusExport");
+
+            WebClient nusWC = new TimeoutWebClient(60 * 1000);
+
+            // Create\Configure NusClient
+            mNusClient = new libWiiSharp.WiiuNusClient(titleId, version, outputDir);
+            mNusClient.ConfigureNusClient(nusWC);
+            mNusClient.UseLocalFiles = true;
+
+            mNusClient.SetToWiiServer();
+
+            // Events
+            mNusClient.Debug += nusClient_Debug;
+
+            ShowLog("");
+            ShowLog(string.Format("  Export [{0}/{1}] - TitleId:{2} Start...", curr + 1, total, titleId));
+            mNusClient.exportTitle();
+            ShowLog(string.Format("  Export [{0}/{1}] - TitleId:{2} Finish...", curr + 1, total, titleId));
+        }
+
 
         private void button_download_Click(object sender, EventArgs e)
         {
@@ -239,12 +308,11 @@ namespace NUS_Downloader_Net
             }
             else
             {
-                if (nusClient != null)
+                if (mNusClient != null)
                 {
-                    nusClient.cancelDownload = true;
+                    mNusClient.cancelDownload = true;
                     button_download.Enabled = false;
                 }
-                //setDownloading(false);
             }
         }
 
@@ -261,6 +329,9 @@ namespace NUS_Downloader_Net
                     textBox_down_titles.Enabled = false;
                     button_export_down_list.Enabled = false;
                     button_patch_external.Enabled = false;
+
+                    button_export_down_list.Enabled = false;
+                    button_patch_external.Enabled = false;
                 }
                 else
                 {
@@ -270,19 +341,156 @@ namespace NUS_Downloader_Net
                     button_export_down_list.Enabled = true;
                     button_patch_external.Enabled = true;
                     label_downSpeed.Text = "";
+
+                    button_export_down_list.Enabled = true;
+                    button_patch_external.Enabled = true;
                 }
                 mDownloading = downloading;
             }
         }
 
+        void setExporting(bool exporting, bool force = false)
+        {
+            if (exporting != mExporting)
+            {
+                if (exporting)
+                {
+                    button_download.Enabled = false;
+                    progressBar_current.Value = 0;
+                    progressBar_total.Value = 0;
+
+                    textBox_down_titles.Enabled = false;
+                    button_export_down_list.Enabled = false;
+                    button_patch_external.Enabled = false;
+
+                    button_export_down_list.Enabled = false;
+                    button_patch_external.Enabled = false;
+                }
+                else
+                {
+                    button_download.Enabled = true;
+
+                    textBox_down_titles.Enabled = true;
+                    button_export_down_list.Enabled = true;
+                    button_patch_external.Enabled = true;
+                    label_downSpeed.Text = "";
+
+                    button_export_down_list.Enabled = true;
+                    button_patch_external.Enabled = true;
+                }
+                mExporting = exporting;
+            }
+        }
+
         private void button_export_down_list_Click(object sender, EventArgs e)
         {
-
+            if (!mExporting)
+            {
+                setExporting(true);
+                mNusExport.RunWorkerAsync();
+            }
+            else
+            {
+                mNusExport.CancelAsync();
+            }
         }
         private void button_patch_external_Click(object sender, EventArgs e)
         {
+            FolderBrowserDialog fbd = new FolderBrowserDialog();
+            fbd.Description = "Please selectd dir:";
+            fbd.ShowNewFolderButton = false;
 
+            if (fbd.ShowDialog() == DialogResult.OK)
+            {
+                string foldPath = fbd.SelectedPath;
+
+                if (Directory.Exists(foldPath))
+                {
+                    PatchExternalDownloadDir(foldPath);
+                }
+            }
         }
+
+        private void RenameFileInDir(string dir, string fileName, string newFileName)
+        {
+            var oldFile = Path.Combine(dir, fileName);
+            var newFile = Path.Combine(dir, newFileName);
+            File.Move(oldFile, newFile);
+        }
+        private void PatchExternalDownloadDir(string foldPath)
+        {
+            ShowLog("Patch dir [" + foldPath + "] start...");
+
+            ShowLog("Check file count & size...");
+
+
+            try
+            {    // Load tmd
+                var tmdFile = Path.Combine(foldPath, "tmd");
+                if (!File.Exists(tmdFile))
+                {
+                    ShowLog("Not found tmd file!");
+                    return;
+                }
+
+                libWiiSharp.TMD tmd = new libWiiSharp.TMD();
+                tmd.LoadFile(tmdFile);
+
+                List<string> renameList = new List<string>();
+
+                // Check content & size
+                for (int i = 0; i < tmd.NumOfContents; ++i)
+                {
+                    libWiiSharp.TMD_Content content = tmd.Contents[i];
+
+                    var contentId = content.ContentID.ToString("x8");
+
+                    // check content size
+                    {
+                        FileInfo fi = new FileInfo(Path.Combine(foldPath, contentId));
+                        if (!fi.Exists)
+                        {
+                            throw new Exception("Content [" + contentId + "] not exists!");
+                        }
+                        if (fi.Length != (long)content.Size)
+                        {
+                            throw new Exception("Content [" + contentId + "] size error!");
+                        }
+                    }
+
+                    // check h3 size
+                    if (((short)content.Type & 0x02) == 0x02)
+                    {
+                        FileInfo h3fi = new FileInfo(Path.Combine(foldPath, contentId + ".h3"));
+                        if (!h3fi.Exists)
+                        {
+                            throw new Exception("Content [" + contentId + "] h3 not exists!");
+                        }
+                        if (!(h3fi.Length == 20 || h3fi.Length == 40))
+                        {
+                            throw new Exception("Content [" + contentId + "] h3 size error!");
+                        }
+                    }
+                    renameList.Add(contentId);
+                }
+
+                // Rename
+
+                // tmd
+                RenameFileInDir(foldPath, "tmd", "title.tmd");
+                foreach (var i in renameList)
+                {
+                    RenameFileInDir(foldPath, i, i + ".app");
+                }
+
+                ShowLog("Patch dir [" + foldPath + "] finish...");
+            }
+            catch (Exception ex)
+            {
+                ShowLog("Fail: " + ex.Message);
+            }
+        }
+
         private void ShowLog(string msg)
         {
             textBox_log.Text += msg + "\r\n";
@@ -304,6 +512,9 @@ namespace NUS_Downloader_Net
             textBox_log.Text = "";
         }
 
-
+        private void button_clear_log_Click(object sender, EventArgs e)
+        {
+            ClearLog();
+        }
     }
 }

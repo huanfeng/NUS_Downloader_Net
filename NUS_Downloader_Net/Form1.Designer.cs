@@ -29,19 +29,28 @@
         private void InitializeComponent()
         {
             this.textBox_down_titles = new System.Windows.Forms.TextBox();
-            this.groupBox1 = new System.Windows.Forms.GroupBox();
+            this.groupBox_Config = new System.Windows.Forms.GroupBox();
+            this.button_clear_log = new System.Windows.Forms.Button();
             this.button_patch_external = new System.Windows.Forms.Button();
             this.button_export_down_list = new System.Windows.Forms.Button();
             this.checkBox_auto_retry = new System.Windows.Forms.CheckBox();
-            this.label1 = new System.Windows.Forms.Label();
+            this.label_title_id = new System.Windows.Forms.Label();
             this.button_download = new System.Windows.Forms.Button();
             this.groupBox2 = new System.Windows.Forms.GroupBox();
             this.label_downSpeed = new System.Windows.Forms.Label();
             this.progressBar_total = new System.Windows.Forms.ProgressBar();
             this.progressBar_current = new System.Windows.Forms.ProgressBar();
             this.textBox_log = new System.Windows.Forms.TextBox();
-            this.groupBox1.SuspendLayout();
+            this.tabControl_main = new System.Windows.Forms.TabControl();
+            this.tabPage_download = new System.Windows.Forms.TabPage();
+            this.tabPage_setting = new System.Windows.Forms.TabPage();
+            this.tabPage_help = new System.Windows.Forms.TabPage();
+            this.textBox_readme = new System.Windows.Forms.TextBox();
+            this.groupBox_Config.SuspendLayout();
             this.groupBox2.SuspendLayout();
+            this.tabControl_main.SuspendLayout();
+            this.tabPage_download.SuspendLayout();
+            this.tabPage_help.SuspendLayout();
             this.SuspendLayout();
             // 
             // textBox_down_titles
@@ -53,41 +62,50 @@
             this.textBox_down_titles.Size = new System.Drawing.Size(366, 196);
             this.textBox_down_titles.TabIndex = 0;
             // 
-            // groupBox1
+            // groupBox_Config
             // 
-            this.groupBox1.Controls.Add(this.button_patch_external);
-            this.groupBox1.Controls.Add(this.button_export_down_list);
-            this.groupBox1.Controls.Add(this.checkBox_auto_retry);
-            this.groupBox1.Controls.Add(this.label1);
-            this.groupBox1.Controls.Add(this.button_download);
-            this.groupBox1.Controls.Add(this.textBox_down_titles);
-            this.groupBox1.Location = new System.Drawing.Point(12, 1);
-            this.groupBox1.Name = "groupBox1";
-            this.groupBox1.Size = new System.Drawing.Size(587, 240);
-            this.groupBox1.TabIndex = 1;
-            this.groupBox1.TabStop = false;
-            this.groupBox1.Text = "Config";
+            this.groupBox_Config.Controls.Add(this.button_clear_log);
+            this.groupBox_Config.Controls.Add(this.button_patch_external);
+            this.groupBox_Config.Controls.Add(this.button_export_down_list);
+            this.groupBox_Config.Controls.Add(this.checkBox_auto_retry);
+            this.groupBox_Config.Controls.Add(this.label_title_id);
+            this.groupBox_Config.Controls.Add(this.button_download);
+            this.groupBox_Config.Controls.Add(this.textBox_down_titles);
+            this.groupBox_Config.Location = new System.Drawing.Point(10, 6);
+            this.groupBox_Config.Name = "groupBox_Config";
+            this.groupBox_Config.Size = new System.Drawing.Size(587, 240);
+            this.groupBox_Config.TabIndex = 1;
+            this.groupBox_Config.TabStop = false;
+            this.groupBox_Config.Text = "Config";
+            // 
+            // button_clear_log
+            // 
+            this.button_clear_log.Location = new System.Drawing.Point(387, 211);
+            this.button_clear_log.Name = "button_clear_log";
+            this.button_clear_log.Size = new System.Drawing.Size(134, 23);
+            this.button_clear_log.TabIndex = 6;
+            this.button_clear_log.Text = "Clear Log";
+            this.button_clear_log.UseVisualStyleBackColor = true;
+            this.button_clear_log.Click += new System.EventHandler(this.button_clear_log_Click);
             // 
             // button_patch_external
             // 
-            this.button_patch_external.Location = new System.Drawing.Point(387, 139);
+            this.button_patch_external.Location = new System.Drawing.Point(387, 151);
             this.button_patch_external.Name = "button_patch_external";
-            this.button_patch_external.Size = new System.Drawing.Size(134, 23);
+            this.button_patch_external.Size = new System.Drawing.Size(134, 42);
             this.button_patch_external.TabIndex = 5;
-            this.button_patch_external.Text = "Patch";
+            this.button_patch_external.Text = "Patch external download";
             this.button_patch_external.UseVisualStyleBackColor = true;
-            this.button_patch_external.Visible = false;
             this.button_patch_external.Click += new System.EventHandler(this.button_patch_external_Click);
             // 
             // button_export_down_list
             // 
             this.button_export_down_list.Location = new System.Drawing.Point(387, 93);
             this.button_export_down_list.Name = "button_export_down_list";
-            this.button_export_down_list.Size = new System.Drawing.Size(134, 23);
+            this.button_export_down_list.Size = new System.Drawing.Size(134, 42);
             this.button_export_down_list.TabIndex = 4;
-            this.button_export_down_list.Text = "Export";
+            this.button_export_down_list.Text = "Export download list";
             this.button_export_down_list.UseVisualStyleBackColor = true;
-            this.button_export_down_list.Visible = false;
             this.button_export_down_list.Click += new System.EventHandler(this.button_export_down_list_Click);
             // 
             // checkBox_auto_retry
@@ -102,14 +120,14 @@
             this.checkBox_auto_retry.Text = "Auto retry";
             this.checkBox_auto_retry.UseVisualStyleBackColor = true;
             // 
-            // label1
+            // label_title_id
             // 
-            this.label1.AutoSize = true;
-            this.label1.Location = new System.Drawing.Point(7, 20);
-            this.label1.Name = "label1";
-            this.label1.Size = new System.Drawing.Size(53, 12);
-            this.label1.TabIndex = 2;
-            this.label1.Text = "Title id";
+            this.label_title_id.AutoSize = true;
+            this.label_title_id.Location = new System.Drawing.Point(7, 20);
+            this.label_title_id.Name = "label_title_id";
+            this.label_title_id.Size = new System.Drawing.Size(53, 12);
+            this.label_title_id.TabIndex = 2;
+            this.label_title_id.Text = "Title id";
             // 
             // button_download
             // 
@@ -127,7 +145,7 @@
             this.groupBox2.Controls.Add(this.progressBar_total);
             this.groupBox2.Controls.Add(this.progressBar_current);
             this.groupBox2.Controls.Add(this.textBox_log);
-            this.groupBox2.Location = new System.Drawing.Point(12, 261);
+            this.groupBox2.Location = new System.Drawing.Point(10, 266);
             this.groupBox2.Name = "groupBox2";
             this.groupBox2.Size = new System.Drawing.Size(587, 206);
             this.groupBox2.TabIndex = 2;
@@ -165,39 +183,102 @@
             this.textBox_log.Size = new System.Drawing.Size(571, 137);
             this.textBox_log.TabIndex = 0;
             // 
+            // tabControl_main
+            // 
+            this.tabControl_main.Controls.Add(this.tabPage_download);
+            this.tabControl_main.Controls.Add(this.tabPage_setting);
+            this.tabControl_main.Controls.Add(this.tabPage_help);
+            this.tabControl_main.Location = new System.Drawing.Point(12, 12);
+            this.tabControl_main.Name = "tabControl_main";
+            this.tabControl_main.SelectedIndex = 0;
+            this.tabControl_main.Size = new System.Drawing.Size(615, 506);
+            this.tabControl_main.TabIndex = 6;
+            // 
+            // tabPage_download
+            // 
+            this.tabPage_download.Controls.Add(this.groupBox_Config);
+            this.tabPage_download.Controls.Add(this.groupBox2);
+            this.tabPage_download.Location = new System.Drawing.Point(4, 22);
+            this.tabPage_download.Name = "tabPage_download";
+            this.tabPage_download.Padding = new System.Windows.Forms.Padding(3);
+            this.tabPage_download.Size = new System.Drawing.Size(607, 480);
+            this.tabPage_download.TabIndex = 0;
+            this.tabPage_download.Text = "Download";
+            this.tabPage_download.UseVisualStyleBackColor = true;
+            // 
+            // tabPage_setting
+            // 
+            this.tabPage_setting.Location = new System.Drawing.Point(4, 22);
+            this.tabPage_setting.Name = "tabPage_setting";
+            this.tabPage_setting.Padding = new System.Windows.Forms.Padding(3);
+            this.tabPage_setting.Size = new System.Drawing.Size(607, 480);
+            this.tabPage_setting.TabIndex = 1;
+            this.tabPage_setting.Text = "Setting";
+            this.tabPage_setting.UseVisualStyleBackColor = true;
+            // 
+            // tabPage_help
+            // 
+            this.tabPage_help.Controls.Add(this.textBox_readme);
+            this.tabPage_help.Location = new System.Drawing.Point(4, 22);
+            this.tabPage_help.Name = "tabPage_help";
+            this.tabPage_help.Padding = new System.Windows.Forms.Padding(3);
+            this.tabPage_help.Size = new System.Drawing.Size(607, 480);
+            this.tabPage_help.TabIndex = 2;
+            this.tabPage_help.Text = "Readme";
+            this.tabPage_help.UseVisualStyleBackColor = true;
+            // 
+            // textBox_readme
+            // 
+            this.textBox_readme.Location = new System.Drawing.Point(6, 6);
+            this.textBox_readme.Multiline = true;
+            this.textBox_readme.Name = "textBox_readme";
+            this.textBox_readme.ReadOnly = true;
+            this.textBox_readme.ScrollBars = System.Windows.Forms.ScrollBars.Both;
+            this.textBox_readme.Size = new System.Drawing.Size(595, 468);
+            this.textBox_readme.TabIndex = 0;
+            // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 12F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(605, 471);
-            this.Controls.Add(this.groupBox2);
-            this.Controls.Add(this.groupBox1);
+            this.ClientSize = new System.Drawing.Size(634, 530);
+            this.Controls.Add(this.tabControl_main);
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedSingle;
             this.MaximizeBox = false;
             this.Name = "Form1";
-            this.Text = "NUS Downloader .Net v0.1";
-            this.groupBox1.ResumeLayout(false);
-            this.groupBox1.PerformLayout();
+            this.Text = "NUS Downloader .Net v0.2";
+            this.groupBox_Config.ResumeLayout(false);
+            this.groupBox_Config.PerformLayout();
             this.groupBox2.ResumeLayout(false);
             this.groupBox2.PerformLayout();
+            this.tabControl_main.ResumeLayout(false);
+            this.tabPage_download.ResumeLayout(false);
+            this.tabPage_help.ResumeLayout(false);
+            this.tabPage_help.PerformLayout();
             this.ResumeLayout(false);
- 
+
         }
 
         #endregion
 
         private System.Windows.Forms.TextBox textBox_down_titles;
-        private System.Windows.Forms.GroupBox groupBox1;
+        private System.Windows.Forms.GroupBox groupBox_Config;
         private System.Windows.Forms.Button button_patch_external;
         private System.Windows.Forms.Button button_export_down_list;
         private System.Windows.Forms.CheckBox checkBox_auto_retry;
-        private System.Windows.Forms.Label label1;
+        private System.Windows.Forms.Label label_title_id;
         private System.Windows.Forms.Button button_download;
         private System.Windows.Forms.GroupBox groupBox2;
         private System.Windows.Forms.ProgressBar progressBar_total;
         private System.Windows.Forms.ProgressBar progressBar_current;
         private System.Windows.Forms.TextBox textBox_log;
         private System.Windows.Forms.Label label_downSpeed;
+        private System.Windows.Forms.TabControl tabControl_main;
+        private System.Windows.Forms.TabPage tabPage_download;
+        private System.Windows.Forms.TabPage tabPage_setting;
+        private System.Windows.Forms.TabPage tabPage_help;
+        private System.Windows.Forms.Button button_clear_log;
+        private System.Windows.Forms.TextBox textBox_readme;
     }
 }
 
